@@ -3,7 +3,7 @@ import { Db } from './index'
 import { serialize } from './serializer/datatype'
 import { UpdateCommand } from './commands/update'
 import { ActionType } from './constant'
-import { AddRes, GetOneRes, RemoveRes, UpdateRes } from './result-types'
+import { AddRes, GetRes, RemoveRes, UpdateRes } from './result-types'
 import { ProjectionType } from './interface'
 import { Query } from './query'
 
@@ -74,12 +74,17 @@ export class DocumentReference {
       }
     }
 
+    
+
     return {
+      // cloudbase 多条插入会返回
+      ids: Object.values(res.data._id),
+
       id: res.data._id || res.data[this._db.primaryKey],
       insertedCount: res.data.insertedCount,
       requestId: res.requestId,
       ok: true
-    }
+    } as unknown as AddRes
   }
 
   /**
@@ -129,7 +134,8 @@ export class DocumentReference {
   async update(data: Object): Promise<UpdateRes> {
     // 把所有更新数据转为带操作符的
     const merge = true
-    const options = { merge, multi: false, upsert: false }
+    // cloudbase 默认 multi
+    const options = { merge, multi: true, upsert: false }
 
     const res = await this._query
       .where({ [this._db.primaryKey]: this.id })
@@ -150,10 +156,11 @@ export class DocumentReference {
   /**
    * 返回选中的文档
    */
-  async get<T = any>(): Promise<GetOneRes<T>> {
+  async get<T = any>(): Promise<GetRes<T>> {
+    // cloudbase doc().get() 返回的也是数组, 而不是单个文档
     const res = await this._query
       .where({ [this._db.primaryKey]: this.id })
-      .getOne()
+      .get()
     return res
   }
 

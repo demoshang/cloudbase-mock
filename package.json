@@ -1,0 +1,30 @@
+{
+  "name": "mock-cloudbase",
+  "description": "",
+  "private": true,
+  "scripts": {
+    "watch": "pdev",
+    "clean": "pnpm run -r clean",
+    "build": "pnpm run -r build",
+    "link": "cd packages/cloudbase-mock && pnpm link -g && yarn link"
+  },
+  "devDependencies": {
+    "@trivago/prettier-plugin-sort-imports": "3.4.0",
+    "@types/node": "^18.11.8",
+    "@typescript-eslint/eslint-plugin": "^5.41.0",
+    "@typescript-eslint/parser": "^5.41.0",
+    "concurrently": "^7.5.0",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.0.3",
+    "dotenv-cli": "^6.0.0",
+    "eslint": "^8.26.0",
+    "eslint-config-alloy": "^4.6.2",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "nodemon": "^2.0.19",
+    "prettier": "^2.7.1",
+    "rimraf": "^3.0.2",
+    "typescript": "^4.8.2"
+  },
+  "dependencies": {}
+}

@@ -104,4 +104,13 @@ export class Db {
   ObjectId(id?: string | number | ObjectId) {
     return new ObjectId(id)
   }
+
+  // Transaction 只是支持函数, 并不支持 rollback 功能
+  async startTransaction() {
+    return this;
+  }
+  async commit() {}
+  async rollback() {
+    console.error("需要手动删除数据");
+  }
 }

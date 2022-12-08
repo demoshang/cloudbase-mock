@@ -26,9 +26,10 @@
   "author": "maslow(wangfugen@126.com)",
   "license": "ISC",
   "dependencies": {
-    "database-ql": "^0.8.2",
+    "bson": "^4.5.3",
+    "database-ql": "workspace:",
     "lodash": "^4.17.21",
-    "mongodb": "^4.1.1",
+    "mongodb": "~4.1.1",
     "mysql2": "^2.2.5",
     "validator": "^13.7.0"
   },
