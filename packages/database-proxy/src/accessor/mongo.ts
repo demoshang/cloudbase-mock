@@ -410,7 +410,8 @@ export class MongoAccessor implements AccessorInterface {
      */
     protected generateDocId(): string {
         const id = new ObjectId()
-        return id.toHexString()
+        // 腾讯云是 32 位的, 这里直接补0
+        return id.toHexString().padEnd(32, '0')
     }
 
     /**
