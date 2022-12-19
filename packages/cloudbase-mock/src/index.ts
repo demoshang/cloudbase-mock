@@ -1,4 +1,4 @@
-import { Database } from "@cloudbase/node-sdk";
+import { CloudBase, Database } from "@cloudbase/node-sdk";
 import { Db, RequestInterface } from "database-ql";
 import { execute } from "./db";
 
@@ -23,4 +23,8 @@ function getDatabase() {
   return db as unknown as Database.Db;
 }
 
-export { getDatabase };
+function getCloudApp(): CloudBase {
+  throw new Error("not support mock");
+}
+
+export { getDatabase, getCloudApp };
