@@ -23,6 +23,7 @@ const { dbName: DB_NAME } = parsed;
 
 console.log("\n\n\n");
 console.info(`连接本地数据库: ${DB_NAME}`);
+console.info(DB_URL);
 console.log("\n\n\n");
 
 export { DB_NAME, DB_URL };
