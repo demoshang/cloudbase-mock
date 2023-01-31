@@ -102,6 +102,8 @@ export class Query {
    */
   private _request: RequestInterface
 
+  private _options: { multiple: boolean }
+
   /**
    * @param db            - db reference 
    * @param coll          - collection name
@@ -115,7 +117,8 @@ export class Query {
     fieldFilters?: Object,
     fieldOrders?: QueryOrder[],
     queryOptions?: QueryOption,
-    withs?: WithParam[]
+    withs?: WithParam[],
+    options?: {multiple: boolean}
   ) {
     this._db = db
     this._coll = coll
@@ -124,6 +127,9 @@ export class Query {
     this._queryOptions = queryOptions || {}
     this._withs = withs || []
     this._request = this._db.request
+
+    // 腾讯云默认支持
+    this._options = options ?? { multiple: true }
   }
 
   /**
@@ -296,6 +302,14 @@ export class Query {
     return query
   }
 
+  // https://docs.cloudbase.net/api-reference/server/node-sdk/database/database#options
+  /**
+   * 设置 数据库接口配置
+   */
+  public options(options: {multiple: boolean}) {
+    return new Query(this._db, this._coll, this._fieldFilters, this._fieldOrders, this._queryOptions, this._withs, options)
+  }
+
   /**
    * 克隆
    * @returns Query
@@ -400,7 +414,7 @@ export class Query {
     }
 
     const param = this.buildQueryParam()
-    param.multi = options?.multi ?? false
+    param.multi = options?.multi ?? this._options?.multiple ?? false
     param.merge = options?.merge ?? true
     param.upsert = options?.upsert ?? false
     if (param.merge) {
@@ -444,7 +458,7 @@ export class Query {
     }
 
     const param = this.buildQueryParam()
-    param.multi = options?.multi ?? false
+    param.multi = options?.multi ?? this._options?.multiple ?? false
 
     const res = await this.send(ActionType.remove, param)
     if (res.error) {
@@ -612,4 +626,5 @@ export class Query {
   public async send(action: ActionType, param: QueryParam) {
     return await this._request.send(action, param)
   }
+  
 }
