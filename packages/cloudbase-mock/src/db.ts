@@ -1,8 +1,10 @@
 import { ActionType, getAction, MongoAccessor, Params } from "database-proxy";
-import { DB_NAME, DB_URL } from "./config";
+import { getDBConfig } from "./config";
 
 async function init() {
-  const accessor = new MongoAccessor(DB_NAME, DB_URL, {
+  const { url, name } = await getDBConfig();
+
+  const accessor = new MongoAccessor(name, url, {
     directConnection: true,
   });
 
