@@ -1,7 +1,6 @@
 import React from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { AddIcon } from "@chakra-ui/icons";
 import {
   Button,
   FormControl,
@@ -19,15 +18,13 @@ import {
   VStack,
 } from "@chakra-ui/react";
 
-import IconWrap from "@/components/IconWrap";
-
 import { useCreateDBMutation } from "../../service";
-
-const CreateCollectionModal = (props: { collection?: any }) => {
+import useDBMStore from "../../store";
+const CreateCollectionModal = (props: { collection?: any; children: React.ReactElement }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
-
-  const { collection } = props;
+  const store = useDBMStore();
+  const { collection, children } = props;
 
   const isEdit = !!collection;
 
@@ -47,39 +44,41 @@ const CreateCollectionModal = (props: { collection?: any }) => {
 
   const onSubmit = async (data: any) => {
     await createDBMutation.mutateAsync({ name: data.name });
+    store.setCurrentDB(data);
     onClose();
     reset({});
   };
 
   return (
     <>
-      <IconWrap
-        size={20}
-        onClick={() => {
+      {React.cloneElement(children, {
+        onClick: () => {
           onOpen();
           reset({});
           setTimeout(() => setFocus("name"), 0);
-        }}
-      >
-        <AddIcon fontSize={10} />
-      </IconWrap>
-
-      <Modal isOpen={isOpen} onClose={onClose} size="xl">
+        },
+      })}
+      <Modal isOpen={isOpen} onClose={onClose} size="lg">
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>添加集合</ModalHeader>
+          <ModalHeader>{t("CollectionPanel.AddCollection")}</ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
             <VStack spacing={6} align="flex-start">
               <FormControl isInvalid={!!errors?.name}>
-                <FormLabel htmlFor="name">集合名称</FormLabel>
+                <FormLabel htmlFor="name">{t("CollectionPanel.CollectionName")}</FormLabel>
                 <Input
                   {...register("name", {
                     required: "name is required",
+                    pattern: {
+                      value: /^[A-Za-z][A-Za-z0-9-_]+$/,
+                      message: t("CollectionPanel.CollectionNameRule"),
+                    },
                   })}
                   id="name"
                   variant="filled"
                   readOnly={isEdit}
+                  placeholder={t("CollectionPanel.CollectionPlaceholder").toString()}
                 />
                 <FormErrorMessage>{errors.name && errors.name.message}</FormErrorMessage>
               </FormControl>
@@ -88,20 +87,11 @@ const CreateCollectionModal = (props: { collection?: any }) => {
 
           <ModalFooter>
             <Button
-              mr={3}
-              onClick={() => {
-                onClose();
-              }}
-            >
-              {t("Common.Dialog.Cancel")}
-            </Button>
-            <Button
               isLoading={createDBMutation.isLoading}
-              colorScheme="blue"
               type="submit"
               onClick={handleSubmit(onSubmit)}
             >
-              {t("Common.Dialog.Confirm")}
+              {t("Confirm")}
             </Button>
           </ModalFooter>
         </ModalContent>

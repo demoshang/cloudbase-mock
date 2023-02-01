@@ -13,6 +13,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// user schemas
+
 model User {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   username  String   @unique
@@ -21,7 +23,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile UserProfile?
+  profile              UserProfile?
+  personalAccessTokens PersonalAccessToken[]
 }
 
 model UserProfile {
@@ -37,27 +40,84 @@ model UserProfile {
   user User @relation(fields: [uid], references: [id])
 }
 
+model PersonalAccessToken {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  uid       String   @db.ObjectId
+  name      String
+  token     String   @unique
+  expiredAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [uid], references: [id])
+}
+
+// region schemas 
+
+type RegionClusterConf {
+  driver     String // kubernetes
+  kubeconfig String?
+}
+
+type RegionDatabaseConf {
+  driver        String // mongodb
+  connectionUri String
+}
+
+type RegionGatewayConf {
+  driver String // apisix
+  domain String
+  tls    Boolean
+  apiUrl String
+  apiKey String
+}
+
+type RegionStorageConf {
+  driver           String // minio
+  domain           String
+  externalEndpoint String
+  internalEndpoint String
+  accessKey        String
+  secretKey        String
+}
+
 model Region {
-  id          String        @id @default(auto()) @map("_id") @db.ObjectId
-  name        String        @unique
-  desc        String?
-  Application Application[]
+  id           String             @id @default(auto()) @map("_id") @db.ObjectId
+  name         String             @unique
+  displayName  String
+  clusterConf  RegionClusterConf
+  databaseConf RegionDatabaseConf
+  gatewayConf  RegionGatewayConf
+  storageConf  RegionStorageConf
+  state        String             @default("active") // active, inactive
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications Application[]
+  bundles      Bundle[]
 }
 
 model Bundle {
-  id                     String        @id @default(auto()) @map("_id") @db.ObjectId
-  name                   String        @unique
+  id                     String @id @default(auto()) @map("_id") @db.ObjectId
+  name                   String
   displayName            String
-  limitCPU               Int
-  limitMemory            Int
-  requestCPU             Int
-  requestMemory          Int
-  databaseCapacity       Int
-  storageCapacity        Int
-  networkTrafficOutbound Int
-  networkTrafficInbound  Int?
-  priority               Int
-  Application            Application[]
+  regionName             String
+  limitCPU               Int // 1000 = 1 core
+  limitMemory            Int // in MB
+  requestCPU             Int // 1000 = 1 core
+  requestMemory          Int // in MB
+  databaseCapacity       Int // in MB
+  storageCapacity        Int // in MB
+  networkTrafficOutbound Int // in MB
+  priority               Int    @default(0)
+  state                  String @default("active") // active, inactive
+  price                  Int    @default(0)
+
+  region Region @relation(fields: [regionName], references: [name])
+
+  applications Application[]
+
+  @@unique([regionName, name])
 }
 
 type RuntimeImageGroup {
@@ -76,9 +136,12 @@ model Runtime {
   Application Application[]
 }
 
+// application schemas
+
 enum ApplicationState {
   Running
   Stopped
+  Restarting
 }
 
 enum ApplicationPhase {
@@ -106,10 +169,14 @@ model Application {
   updatedAt   DateTime         @updatedAt
   createdBy   String           @db.ObjectId
 
-  region        Region                    @relation(fields: [regionName], references: [name])
-  runtime       Runtime                   @relation(fields: [runtimeName], references: [name])
-  bundle        Bundle                    @relation(fields: [bundleName], references: [name])
+  region  Region  @relation(fields: [regionName], references: [name])
+  runtime Runtime @relation(fields: [runtimeName], references: [name])
+  bundle  Bundle  @relation(fields: [regionName, bundleName], references: [regionName, name])
+
   configuration ApplicationConfiguration?
+  storageUser   StorageUser?
+  database      Database?
+  domain        ApplicationDomain?
 }
 
 type EnvironmentVariable {
@@ -128,6 +195,79 @@ model ApplicationConfiguration {
 
   application Application @relation(fields: [appid], references: [appid])
 }
+
+// storage schemas
+
+model StorageUser {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  appid     String   @unique
+  accessKey String
+  secretKey String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  application Application @relation(fields: [appid], references: [appid])
+}
+
+enum BucketPolicy {
+  readwrite
+  readonly
+  private
+}
+
+model StorageBucket {
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  appid     String
+  name      String        @unique
+  shortName String
+  policy    BucketPolicy
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  domain    BucketDomain?
+}
+
+// database schemas
+
+model Database {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  appid    String @unique
+  name     String
+  user     String
+  password String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  application Application @relation(fields: [appid], references: [appid])
+}
+
+model DatabasePolicy {
+  id        String               @id @default(auto()) @map("_id") @db.ObjectId
+  appid     String
+  name      String
+  injector  String?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  rules     DatabasePolicyRule[]
+
+  @@unique([appid, name])
+}
+
+model DatabasePolicyRule {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  appid          String
+  policyName     String
+  collectionName String
+  value          Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  policy DatabasePolicy @relation(fields: [appid, policyName], references: [appid, name])
+
+  @@unique([appid, policyName, collectionName])
+}
+
+// cloud function schemas
 
 enum HttpMethod {
   GET
@@ -160,5 +300,49 @@ model CloudFunction {
   updatedAt DateTime            @updatedAt
   createdBy String              @db.ObjectId
 
+  cronTriggers CronTrigger[]
+
   @@unique([appid, name])
+}
+
+model CronTrigger {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  appid     String
+  desc      String
+  cron      String
+  target    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cloudFunction CloudFunction @relation(fields: [appid, target], references: [appid, name])
+}
+
+// gateway schemas
+
+enum DomainState {
+  Active
+  Inactive
+}
+
+model ApplicationDomain {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  appid     String      @unique
+  domain    String      @unique
+  state     DomainState @default(Active)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  application Application @relation(fields: [appid], references: [appid])
+}
+
+model BucketDomain {
+  id         String      @id @default(auto()) @map("_id") @db.ObjectId
+  appid      String
+  bucketName String      @unique
+  domain     String      @unique
+  state      DomainState @default(Active)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  bucket StorageBucket @relation(fields: [bucketName], references: [name])
 }

@@ -9,6 +9,7 @@ import {
   FunctionControllerRemove,
   FunctionControllerUpdate,
 } from "@/apis/v1/apps";
+import useFunctionCache from "@/hooks/useFunctionCache";
 import useGlobalStore from "@/pages/globalStore";
 
 const queryKeys = {
@@ -27,7 +28,7 @@ export const useFunctionListQuery = ({ onSuccess }: { onSuccess: (data: any) => 
   );
 };
 
-export const useCreateFuncitonMutation = () => {
+export const useCreateFunctionMutation = () => {
   const store = useFunctionStore();
   const globalStore = useGlobalStore();
   const queryClient = useQueryClient();
@@ -70,6 +71,7 @@ export const useUpdateFunctionMutation = () => {
 export const useDeleteFunctionMutation = () => {
   const globalStore = useGlobalStore();
   const store = useFunctionStore();
+  const functionCache = useFunctionCache();
   const queryClient = useQueryClient();
   return useMutation(
     (values: any) => {
@@ -82,6 +84,7 @@ export const useDeleteFunctionMutation = () => {
         } else {
           queryClient.invalidateQueries(queryKeys.useFunctionListQuery);
           store.setCurrentFunction({});
+          functionCache.removeCache(data?.data?.id);
         }
       },
     },
@@ -90,16 +93,17 @@ export const useDeleteFunctionMutation = () => {
 
 export const useCompileMutation = () => {
   const globalStore = useGlobalStore();
-  return useMutation(
-    (values: { code: string; name: string }) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["compileMutation"],
+    mutationFn: (values: { code: string; name: string }) => {
       return FunctionControllerCompile(values);
     },
-    {
-      onSuccess(data) {
-        if (data.error) {
-          globalStore.showError(data.error);
-        }
-      },
+    onSuccess(data) {
+      if (data.error) {
+        globalStore.showError(data.error);
+      }
+      queryClient.setQueryData(["compileMutation"], data);
     },
-  );
+  });
 };

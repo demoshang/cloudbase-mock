@@ -3,24 +3,31 @@ import create from "zustand";
 import { devtools } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
-import { TApplication } from "@/apis/typing";
-import { AppControllerGetBundles } from "@/apis/v1/bundles";
+import { APP_PHASE_STATUS } from "@/constants";
+
+import { TApplication, TUserInfo } from "@/apis/typing";
+import { ApplicationControllerUpdate } from "@/apis/v1/applications";
 import { AuthControllerGetSigninUrl } from "@/apis/v1/login";
 import { AuthControllerGetProfile } from "@/apis/v1/profile";
-import { AppControllerGetRegions } from "@/apis/v1/regions";
+import { RegionControllerGetRegions } from "@/apis/v1/regions";
 import { AppControllerGetRuntimes } from "@/apis/v1/runtimes";
 
 const { toast } = createStandaloneToast();
 
 type State = {
-  userInfo: any;
+  userInfo: TUserInfo | undefined;
   loading: boolean;
   runtimes?: any[];
   regions?: any[];
-  bundles?: any[];
   currentApp: TApplication | undefined;
   setCurrentApp(app: TApplication): void;
   init(appid?: string): void;
+  restartCurrentApp(): void;
+
+  currentPageId: string | undefined;
+  setCurrentPage: (pageId: string) => void;
+
+  visitedViews: string[];
 
   showSuccess: (text: string | React.ReactNode) => void;
   showInfo: (text: string | React.ReactNode) => void;
@@ -30,31 +37,60 @@ type State = {
 const useGlobalStore = create<State>()(
   devtools(
     immer((set, get) => ({
-      userInfo: {},
+      userInfo: undefined,
 
       currentApp: undefined,
 
       loading: true,
 
+      currentPageId: undefined,
+
+      visitedViews: [],
+
+      setCurrentPage(pageId) {
+        set((state) => {
+          state.currentPageId = pageId;
+          if (!state.visitedViews.includes(pageId)) {
+            state.visitedViews.push(pageId);
+          }
+        });
+      },
+
       init: async () => {
         const userInfo = get().userInfo;
-        if (userInfo.id) {
+        if (userInfo?.id) {
           return;
         }
 
         const userInfoRes = await AuthControllerGetProfile({});
 
         const runtimesRes = await AppControllerGetRuntimes({});
-        const bundlesRes = await AppControllerGetBundles({});
-        const regionsRes = await AppControllerGetRegions({});
+        const regionsRes = await RegionControllerGetRegions({});
 
         set((state) => {
           state.userInfo = userInfoRes.data;
           state.loading = false;
           state.runtimes = runtimesRes.data;
-          state.bundles = bundlesRes.data;
           state.regions = regionsRes.data;
         });
+      },
+
+      restartCurrentApp: async () => {
+        const app = get().currentApp;
+        if (!app) {
+          return;
+        }
+        const restartRes = await ApplicationControllerUpdate({
+          name: app.name,
+          state: APP_PHASE_STATUS.Restarting,
+        });
+        if (!restartRes.error) {
+          set((state) => {
+            if (state.currentApp) {
+              state.currentApp.phase = APP_PHASE_STATUS.Restarting;
+            }
+          });
+        }
       },
 
       setCurrentApp: (app) => {
@@ -73,7 +109,7 @@ const useGlobalStore = create<State>()(
           position: "top",
           title: text,
           status: "success",
-          duration: 1000,
+          duration: 500,
           containerStyle: {
             maxWidth: "100%",
             minWidth: "100px",

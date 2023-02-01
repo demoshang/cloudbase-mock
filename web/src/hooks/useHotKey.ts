@@ -1,12 +1,54 @@
 import { useCallback, useEffect } from "react";
 
-function useHotKey(keyMap: string, trigger: () => void) {
+const isWin = /windows/i.test(navigator.userAgent.toLowerCase());
+const MODIFY_KEY = {
+  // common meta key, support win & mac
+  metaKey: isWin ? "Control" : "Meta",
+  // shift key
+  shiftKey: "Shift",
+  // alt key
+  altKey: "Alt",
+  // control key
+  ctrlKey: "Control",
+};
+
+export function getDisplayString(str: string) {
+  return str.replace(/Meta/g, "⌘").replaceAll("Control", "Ctrl");
+}
+
+export const DEFAULT_SHORTCUTS = {
+  send_request: [`${MODIFY_KEY.metaKey}+s`, `${MODIFY_KEY.metaKey}+r`],
+  deploy: [`${MODIFY_KEY.metaKey}+p`],
+};
+
+export function getWhiteListKeys() {
+  return ["s", "r", "p"];
+}
+
+function useHotKey(
+  keyMap: string[],
+  trigger: () => void,
+  config: {
+    enabled?: boolean;
+  } = {
+    enabled: true,
+  },
+): { displayName: string } {
   const handleKeyDown = useCallback(
     (event: any) => {
-      if (event.key === keyMap && (event.ctrlKey || event.metaKey)) {
-        event.preventDefault();
+      if (getWhiteListKeys().indexOf(event.key) < 0) {
+        return;
+      }
 
-        // remove test log when api called
+      let _k: string[] = [];
+      event.metaKey && _k.push(MODIFY_KEY.metaKey);
+      event.ctrlKey && _k.push(MODIFY_KEY.ctrlKey);
+      event.shiftKey && _k.push(MODIFY_KEY.shiftKey);
+      event.altKey && _k.push(MODIFY_KEY.altKey);
+      _k.push(event.key);
+
+      if (keyMap.indexOf(_k.join("+")) >= 0) {
+        event.preventDefault();
         trigger();
       }
     },
@@ -15,15 +57,19 @@ function useHotKey(keyMap: string, trigger: () => void) {
 
   useEffect(() => {
     // attach the event listener
-    document.addEventListener("keydown", handleKeyDown);
+    if (config?.enabled) {
+      document.addEventListener("keydown", handleKeyDown);
+    }
 
     // remove the event listener
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [handleKeyDown]);
+  }, [config?.enabled, handleKeyDown]);
 
-  return "⌘" + keyMap;
+  return {
+    displayName: getDisplayString(keyMap[0]),
+  };
 }
 
 export default useHotKey;

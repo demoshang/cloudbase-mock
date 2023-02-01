@@ -1,26 +1,35 @@
 import React, { useEffect } from "react";
 import { CopyIcon } from "@chakra-ui/icons";
-import { useClipboard } from "@chakra-ui/react";
+import { Tooltip, useClipboard } from "@chakra-ui/react";
+import { t } from "i18next";
 
 import useGlobalStore from "@/pages/globalStore";
 
-export default function CopyText(props: { text: string; tip?: string }) {
+export default function CopyText(props: {
+  text: string;
+  tip?: string;
+  className?: string;
+  children?: React.ReactElement;
+  hideToolTip?: boolean;
+}) {
   const { onCopy, setValue } = useClipboard("");
   const { showSuccess } = useGlobalStore();
 
-  const text = props.text;
+  const { children = <CopyIcon />, text, tip, className, hideToolTip } = props;
+
   useEffect(() => {
     setValue(text);
   }, [setValue, text]);
 
   return (
-    <CopyIcon
-      className="ml-1"
-      fontSize={12}
-      onClick={() => {
-        onCopy();
-        showSuccess(props.tip || "复制成功");
-      }}
-    />
+    <Tooltip label={hideToolTip ? "" : t("Copy")} placement="top">
+      {React.cloneElement(children, {
+        className: className || "",
+        onClick: () => {
+          onCopy();
+          showSuccess(tip || t("Copied"));
+        },
+      })}
+    </Tooltip>
   );
 }

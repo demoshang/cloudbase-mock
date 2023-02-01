@@ -1,23 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { Application, ApplicationPhase } from '@prisma/client'
-import { isConditionTrue } from '../utils/getter'
-import { DatabaseCoreService } from '../core/database.cr.service'
-import { GatewayCoreService } from '../core/gateway.cr.service'
-import { OSSUserCoreService } from '../core/oss-user.cr.service'
-import { PrismaService } from '../prisma.service'
 import * as assert from 'node:assert'
-import { ApplicationCoreService } from '../core/application.cr.service'
+import { PrismaService } from '../prisma.service'
+import { StorageService } from '../storage/storage.service'
+import { DatabaseService } from '../database/database.service'
+import { ClusterService } from 'src/region/cluster/cluster.service'
+import { RegionService } from 'src/region/region.service'
+import { FunctionDomainService } from 'src/gateway/function-domain.service'
 
 @Injectable()
 export class ApplicationTaskService {
   private readonly logger = new Logger(ApplicationTaskService.name)
 
   constructor(
-    private readonly appCore: ApplicationCoreService,
-    private readonly databaseCore: DatabaseCoreService,
-    private readonly gatewayCore: GatewayCoreService,
-    private readonly ossCore: OSSUserCoreService,
+    private readonly regionService: RegionService,
+    private readonly clusterService: ClusterService,
+    private readonly storageService: StorageService,
+    private readonly databaseService: DatabaseService,
+    private readonly gatewayService: FunctionDomainService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -66,41 +67,55 @@ export class ApplicationTaskService {
    */
   private async reconcileCreatingPhase(app: Application) {
     const appid = app.appid
+    // get app region
+    const region = await this.regionService.findByAppId(appid)
+    assert(region, `Region ${app.regionName} not found`)
+
     // get app bundle
     const bundle = await this.prisma.bundle.findUnique({
-      where: { name: app.bundleName },
+      where: {
+        regionName_name: {
+          regionName: app.regionName,
+          name: app.bundleName,
+        },
+      },
     })
     assert(bundle, `Bundle ${app.bundleName} not found`)
 
-    // reconcile resources
-    const namespace = await this.appCore.getAppNamespace(appid)
+    const namespace = await this.clusterService.getAppNamespace(region, appid)
     if (!namespace) {
       this.logger.debug(`Creating namespace for application ${appid}`)
-      await this.appCore.createAppNamespace(appid, app.createdBy)
+      await this.clusterService.createAppNamespace(region, appid, app.createdBy)
       return
     }
 
-    let database = await this.databaseCore.findOne(appid)
-    let oss = await this.ossCore.findOne(appid)
-    let gateway = await this.gatewayCore.findOne(appid)
+    // reconcile storage
+    let storage = await this.storageService.findOne(appid)
+    if (!storage) {
+      this.logger.debug(`Creating storage for application ${appid}`)
+      const res = await this.storageService.create(app.appid)
+      if (res) {
+        storage = res
+      }
+    }
 
+    // reconcile database
+    let database = await this.databaseService.findOne(appid)
     if (!database) {
       this.logger.debug(`Creating database for application ${appid}`)
-      database = await this.databaseCore.create(app, bundle)
-    }
-    if (!oss) {
-      this.logger.debug(`Creating oss for application ${appid}`)
-      oss = await this.ossCore.create(app, bundle)
-    }
-    if (!gateway) {
-      this.logger.debug(`Creating gateway for application ${appid}`)
-      gateway = await this.gatewayCore.create(app.appid)
+      database = await this.databaseService.create(app.appid)
     }
 
-    // reconcile state
-    if (!isConditionTrue('Ready', database?.status?.conditions)) return
-    if (!isConditionTrue('Ready', gateway?.status?.conditions)) return
-    if (!isConditionTrue('Ready', oss?.status?.conditions)) return
+    // reconcile gateway
+    let gateway = await this.gatewayService.findOne(appid)
+    if (!gateway) {
+      this.logger.debug(`Creating gateway for application ${appid}`)
+      gateway = await this.gatewayService.create(appid)
+    }
+
+    if (!gateway) return
+    if (!storage) return
+    if (!database) return
 
     // update phase
     await this.prisma.application.updateMany({
@@ -122,11 +137,35 @@ export class ApplicationTaskService {
    */
   private async reconcileDeletingPhase(app: Application) {
     const appid = app.appid
+    // get app region
+    const region = await this.regionService.findByAppId(appid)
+    assert(region, `Region ${app.regionName} not found`)
 
     // delete namespace
-    const namespace = await this.appCore.getAppNamespace(appid)
+    const namespace = await this.clusterService.getAppNamespace(region, appid)
     if (namespace) {
-      await this.appCore.removeAppNamespace(appid)
+      await this.clusterService.removeAppNamespace(region, appid)
+      return
+    }
+
+    // delete storage
+    const storage = await this.storageService.findOne(appid)
+    if (storage) {
+      await this.storageService.delete(appid)
+      return
+    }
+
+    // delete database
+    const database = await this.databaseService.findOne(appid)
+    if (database) {
+      await this.databaseService.delete(database)
+      return
+    }
+
+    // delete gateway
+    const gateway = await this.gatewayService.findOne(appid)
+    if (gateway) {
+      await this.gatewayService.delete(appid)
       return
     }
 

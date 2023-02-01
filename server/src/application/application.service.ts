@@ -4,21 +4,13 @@ import { CreateApplicationDto } from './dto/create-application.dto'
 import { ApplicationPhase, ApplicationState, Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma.service'
 import { UpdateApplicationDto } from './dto/update-application.dto'
-import { DatabaseCoreService } from '../core/database.cr.service'
-import { GatewayCoreService } from '../core/gateway.cr.service'
-import { OSSUserCoreService } from '../core/oss-user.cr.service'
 import { APPLICATION_SECRET_KEY, ServerConfig } from '../constants'
 import { GenerateAlphaNumericPassword } from '../utils/random'
 
 @Injectable()
 export class ApplicationService {
   private readonly logger = new Logger(ApplicationService.name)
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly databaseCore: DatabaseCoreService,
-    private readonly gatewayCore: GatewayCoreService,
-    private readonly ossCore: OSSUserCoreService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(userid: string, dto: CreateApplicationDto) {
     try {
@@ -27,7 +19,7 @@ export class ApplicationService {
         name: APPLICATION_SECRET_KEY,
         value: GenerateAlphaNumericPassword(64),
       }
-      const appid = this.generateAppID(ServerConfig.APPID_LENGTH)
+      const appid = await this.tryGenerateUniqueAppid()
 
       const data: Prisma.ApplicationCreateInput = {
         name: dto.name,
@@ -43,7 +35,10 @@ export class ApplicationService {
         },
         bundle: {
           connect: {
-            name: dto.bundleName,
+            regionName_name: {
+              regionName: dto.region,
+              name: dto.bundleName,
+            },
           },
         },
         runtime: {
@@ -86,22 +81,15 @@ export class ApplicationService {
     const application = await this.prisma.application.findUnique({
       where: { appid },
       include: {
-        region: include?.region,
+        region: false,
         bundle: include?.bundle,
         runtime: include?.runtime,
         configuration: include?.configuration,
+        domain: include?.domain,
       },
     })
 
     return application
-  }
-
-  async getSubResources(appid: string) {
-    const database = await this.databaseCore.findOne(appid)
-    const oss = await this.ossCore.findOne(appid)
-    const gateway = await this.gatewayCore.findOne(appid)
-
-    return { database, oss, gateway }
   }
 
   async update(appid: string, dto: UpdateApplicationDto) {
@@ -145,7 +133,7 @@ export class ApplicationService {
     }
   }
 
-  generateAppID(len: number) {
+  private generateAppID(len: number) {
     len = len || 6
 
     // ensure prefixed with letter
@@ -154,5 +142,24 @@ export class ApplicationService {
     const prefix = nanoid.customAlphabet(only_alpha, 1)()
     const nano = nanoid.customAlphabet(alphanumeric, len - 1)
     return prefix + nano()
+  }
+
+  /**
+   * Generate unique application id
+   * @returns
+   */
+  async tryGenerateUniqueAppid() {
+    for (let i = 0; i < 10; i++) {
+      const appid = this.generateAppID(ServerConfig.APPID_LENGTH)
+      const existed = await this.prisma.application.findUnique({
+        where: { appid },
+        select: { appid: true },
+      })
+      if (!existed) {
+        return appid
+      }
+    }
+
+    throw new Error('Generate appid failed')
   }
 }

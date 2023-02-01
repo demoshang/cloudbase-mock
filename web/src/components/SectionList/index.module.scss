@@ -1,27 +1,33 @@
 .sectionList {
   overflow-y: hidden;
+
   li {
     cursor: pointer;
     display: flex;
-    height: 38px;
+    height: 40px;
+    border-radius: 8px;
     align-items: center;
     justify-content: space-between;
-    padding: 2px 8px;
+    padding: 2px 12px;
+    margin-bottom: 2px;
 
     span {
       vertical-align: middle;
     }
 
+    &.small {
+      height: 32px;
+    }
+
     &:hover,
     &.active {
-      background-color: var(--chakra-colors-gray-100);
-      span {
-        color: #000 !important;
-      }
+      background-color: rgba(0, 169, 157, 0.05);
+      color: #008c7f;
     }
 
     &.active {
-      background-color: var(--chakra-colors-gray-200);
+      background-color: rgba(0, 169, 157, 0.05);
+      ;
     }
   }
 }

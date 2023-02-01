@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma.service'
 import { RUNTIME_BUILTIN_DEPENDENCIES } from 'src/runtime-builtin-deps'
 import * as npa from 'npm-package-arg'
 import { CreateDependencyDto } from './dto/create-dependency.dto'
+import { UpdateDependencyDto } from './dto/update-dependency.dto'
 
 export class Dependency {
   name: string
@@ -40,30 +41,55 @@ export class DependencyService {
     return Object.values(deps)
   }
 
-  async add(appid: string, dto: CreateDependencyDto) {
-    if (!this.validate(dto)) {
-      return false
-    }
+  async add(appid: string, dto: CreateDependencyDto[]) {
+    // validate
+    const valid = dto.every((dep) => this.validate(dep))
+    if (!valid) return false
 
     const extras = await this.getExtras(appid)
     const builtins = this.getBuiltins()
     const all = extras.concat(builtins)
 
     // check if the dependency name is already existed
-    const existed = all.find((dep) => {
-      const r = npa(dep)
-      return r.name === dto.name
-    })
-    if (existed) return false
+    const names = all.map((dep) => npa(dep).name)
+    const new_names = dto.map((dep) => npa(dep.name).name)
+    const has_dup = new_names.some((name) => names.includes(name))
+    if (has_dup) return false
 
-    const new_dep = `${dto.name}@${dto.spec}`
+    // add
+    const new_deps = dto.map((dep) => `${dep.name}@${dep.spec}`)
+    const deps = extras.concat(new_deps)
     await this.prisma.applicationConfiguration.update({
       where: { appid },
-      data: {
-        dependencies: {
-          push: new_dep,
-        },
-      },
+      data: { dependencies: deps },
+    })
+
+    return true
+  }
+
+  /**
+   * Update the dependencies' version
+   */
+  async update(appid: string, dto: UpdateDependencyDto[]) {
+    const extras = await this.getExtras(appid)
+
+    // check if the dependency name all valid
+    const names = extras.map((dep) => npa(dep).name)
+    const input_names = dto.map((dep) => npa(dep.name).name)
+    const has_invalid = input_names.some((name) => !names.includes(name))
+    if (has_invalid) return false
+
+    // update
+    const new_deps = dto.map((dep) => `${dep.name}@${dep.spec}`)
+    const filtered = extras.filter((dep) => {
+      const { name } = npa(dep)
+      return !input_names.includes(name)
+    })
+
+    const deps = filtered.concat(new_deps)
+    await this.prisma.applicationConfiguration.update({
+      where: { appid },
+      data: { dependencies: deps },
     })
 
     return true

@@ -20,14 +20,13 @@
   "[json]": {
     "editor.defaultFormatter": "vscode.json-language-features"
   },
-
   "cSpell.words": [
     "aarch",
+    "alipay",
     "apiextensions",
     "appid",
-    "appv",
     "automount",
-    "bitnami",
+    "bodyparser",
     "bson",
     "buildah",
     "buildx",
@@ -45,15 +44,13 @@
     "finalizers",
     "fullname",
     "ghaction",
-    "gonanoid",
     "healthz",
+    "hokify",
     "hostpath",
     "Kube",
-    "kubebuilder",
+    "kubeconfig",
     "Kubefile",
     "Kubernetes",
-    "Kustomization",
-    "kustomize",
     "labring",
     "lafjs",
     "lafyun",
@@ -62,15 +59,16 @@
     "MINIO",
     "moby",
     "MONOG",
-    "mycrd",
     "nestjs",
     "objs",
     "openebs",
     "passw",
     "pgdb",
+    "presigner",
     "readwrite",
     "Referer",
     "rolebinding",
+    "roundrobin",
     "runc",
     "runtimes",
     "runtimev",
@@ -79,6 +77,7 @@
     "signin",
     "statefulset",
     "storageclass",
+    "telepresence",
     "tolerations",
     "uids",
     "upsert",
@@ -86,6 +85,24 @@
     "userid",
     "vitepress",
     "withs",
+    "xmlparser",
     "zcube"
+  ],
+  "i18n-ally.localesPaths": "web/public/locales",
+  "i18n-ally.enabledParsers": [
+    "json"
+  ],
+  "i18n-ally.enabledFrameworks": [
+    "react",
+    "i18next",
+    "general"
+  ],
+  "i18n-ally.sourceLanguage": "zh-CN",
+  "i18n-ally.displayLanguage": "en,zh",
+  "i18n-ally.namespace": false,
+  "i18n-ally.pathMatcher": "{locale}/translation.json",
+  "i18n-ally.keystyle": "nested",
+  "i18n-ally.keysInUse": [
+    "description.part2_whatever"
   ]
 }

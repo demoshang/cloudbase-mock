@@ -16,16 +16,17 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger'
-import { IRequest } from '../utils/types'
+import { IRequest } from '../utils/interface'
 import { JwtAuthGuard } from '../auth/jwt.auth.guard'
 import { ResponseUtil } from '../utils/response'
 import { ApplicationAuthGuard } from '../auth/application.auth.guard'
 import { CreateApplicationDto } from './dto/create-application.dto'
 import { UpdateApplicationDto } from './dto/update-application.dto'
 import { ApplicationService } from './application.service'
-import { ServerConfig } from '../constants'
 import { FunctionService } from '../function/function.service'
-import { StorageService } from '../storage/storage.service'
+import { StorageService } from 'src/storage/storage.service'
+import { RegionService } from 'src/region/region.service'
+import { FunctionDomainService } from 'src/gateway/function-domain.service'
 
 @ApiTags('Application')
 @Controller('applications')
@@ -35,6 +36,8 @@ export class ApplicationController {
   constructor(
     private readonly appService: ApplicationService,
     private readonly funcService: FunctionService,
+    private readonly regionService: RegionService,
+    private readonly gatewayService: FunctionDomainService,
     private readonly storageService: StorageService,
   ) {}
 
@@ -83,13 +86,19 @@ export class ApplicationController {
   @UseGuards(JwtAuthGuard, ApplicationAuthGuard)
   @Get(':appid')
   async findOne(@Param('appid') appid: string) {
-    // get sub resources
-    const resources = await this.appService.getSubResources(appid)
+    const data = await this.appService.findOne(appid, {
+      configuration: true,
+      domain: true,
+    })
 
-    const data = await this.appService.findOne(appid, { configuration: true })
-    const sts = await this.storageService.getOssSTS(appid, resources.oss)
+    const storage = await this.storageService.findOne(appid)
+
+    // Security Warning: Do not response this region object to client since it contains sensitive information
+    const region = await this.regionService.findOne(data.regionName)
+
+    const sts = await this.storageService.getOssSTS(region, appid, storage)
     const credentials = {
-      endpoint: ServerConfig.OSS_ENDPOINT,
+      endpoint: region.storageConf.externalEndpoint,
       accessKeyId: sts.Credentials?.AccessKeyId,
       secretAccessKey: sts.Credentials?.SecretAccessKey,
       sessionToken: sts.Credentials?.SessionToken,
@@ -97,12 +106,11 @@ export class ApplicationController {
     }
 
     const debug_token = await this.funcService.getDebugFunctionToken(appid)
+
     const res = {
       ...data,
-      gateway: resources.gateway,
-      database: resources.database,
-      oss: {
-        ...resources.oss,
+      storage: {
+        ...storage,
         credentials,
       },
       function_debug_token: debug_token,

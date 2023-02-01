@@ -1,11 +1,9 @@
-// import { S3Client } from '@aws-sdk/client-s3';
-
 import useGlobalStore from "@/pages/globalStore";
 
 function useAwsS3() {
   const currentApp = useGlobalStore((state) => state.currentApp);
-  const credentials = currentApp?.oss.credentials!;
-  const region = currentApp?.oss.spec.region;
+  const credentials = currentApp?.storage.credentials!;
+  const region = currentApp?.regionName;
 
   const s3 = new (window as any).AWS.S3({
     accessKeyId: credentials.accessKeyId,
@@ -29,7 +27,16 @@ function useAwsS3() {
         Delimiter: "/",
       })
       .promise();
-    return res.Contents || [];
+
+    const files = res.Contents || [];
+    const dirs = res.CommonPrefixes || [];
+    // console.log(files, dirs)
+    return [...files, ...dirs];
+  };
+
+  const getFileUrl = (bucket: string, key: string) => {
+    const res = s3.getSignedUrl("getObject", { Bucket: bucket, Key: key });
+    return res;
   };
 
   const uploadFile = async (bucketName: string, key: string, body: any, { contentType }: any) => {
@@ -39,7 +46,12 @@ function useAwsS3() {
     return res;
   };
 
-  return { s3, getList, uploadFile };
+  const deleteFile = async (bucket: string, key: string) => {
+    const res = await s3.deleteObject({ Bucket: bucket, Key: key }).promise();
+    return res;
+  };
+
+  return { s3, getList, uploadFile, getFileUrl, deleteFile };
 }
 
 export default useAwsS3;

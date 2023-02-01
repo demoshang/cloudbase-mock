@@ -18,9 +18,6 @@ kubernetes-local/
 .vscode/configurationCache.log
 .vscode/dryrun.log
 .vscode/targets.log
-core/controllers/oss/.vscode/configurationCache.log
-core/controllers/oss/.vscode/targets.log
-core/controllers/oss/.vscode/dryrun.log
 
 .kube/
 
@@ -31,3 +28,5 @@ deploy/build/registry
 deploy/build-dev
 docs/.vitepress/.temp
 .idea/
+
+update-changelog.sh

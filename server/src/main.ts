@@ -10,9 +10,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule)
 
   app.enableCors({
-    origin: 'http://localhost:3001',
+    origin: '*',
     methods: HTTP_METHODS,
-    credentials: true,
+    credentials: false,
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 
@@ -30,7 +30,7 @@ async function bootstrap() {
     .setTitle('Open API Documentation of laf')
     .setDescription('`The APIs of laf server`')
     .setVersion('1.0.alpha')
-    .addServer(ServerConfig.SERVER, 'current server')
+    .addServer(ServerConfig.API_SERVER_URL, 'current server')
     .addServer('http://dev.server:3000', 'dev server')
     .addBearerAuth(
       { type: 'http', scheme: 'bearer', bearerFormat: 'JWT', in: 'header' },
@@ -46,10 +46,16 @@ async function bootstrap() {
     },
   })
 
-  const initService = app.get(InitializerService)
-  await initService.createDefaultBundle()
-  await initService.createDefaultRegion()
-  await initService.createDefaultRuntime()
+  try {
+    const initService = app.get(InitializerService)
+    await initService.createDefaultRegion()
+    await initService.createDefaultBundle()
+    await initService.createDefaultRuntime()
+    await initService.initMinioAlias()
+  } catch (error) {
+    console.error(error)
+    process.exit(1)
+  }
 
   await app.listen(3000)
 }

@@ -1,4 +1,5 @@
-export const SiderBarWidth = 60;
+/* eslint-disable no-unused-vars */
+export const SideBarWidth = 64;
 export const SmallNavHeight = 42;
 
 export const Pages = {
@@ -6,6 +7,8 @@ export const Pages = {
   storage: "storage",
   database: "database",
   logs: "logs",
+  setting: "setting",
+  userSetting: "userSetting",
 };
 
 export enum APP_STATUS {
@@ -20,7 +23,16 @@ export enum APP_STATUS {
 
 export const DEFAULT_REGION = "default";
 
+export enum SUPPORTED_METHODS {
+  GET = "GET",
+  POST = "POST",
+  PUT = "PUT",
+  PATCH = "PATCH",
+  DELETE = "DELETE",
+}
+
 export enum APP_PHASE_STATUS {
   Creating = "Creating",
   Started = "Started",
+  Restarting = "Restarting",
 }

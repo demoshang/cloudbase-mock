@@ -1,5 +1,6 @@
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
+import { CheckIcon } from "@chakra-ui/icons";
 import {
   Button,
   FormControl,
@@ -21,19 +22,19 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t } from "i18next";
 
-import { APP_STATUS, DEFAULT_REGION } from "@/constants/index";
+import { APP_STATUS } from "@/constants/index";
 
 import { ApplicationControllerCreate, ApplicationControllerUpdate } from "@/apis/v1/applications";
 import useGlobalStore from "@/pages/globalStore";
 
-const CreateAppModal = (props: { application?: any; children: React.ReactNode }) => {
+const CreateAppModal = (props: { application?: any; children: React.ReactElement }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const queryClient = useQueryClient();
 
   const { application = {} } = props;
   const isEdit = !!application.name;
 
-  const { bundles = [], runtimes = [], regions = [] } = useGlobalStore();
+  const { runtimes = [], regions = [] } = useGlobalStore();
 
   type FormData = {
     name: string;
@@ -46,10 +47,11 @@ const CreateAppModal = (props: { application?: any; children: React.ReactNode })
   const defaultValues = {
     name: application.name,
     state: application.state || APP_STATUS.Running,
-    region: application.regionName || DEFAULT_REGION,
-    bundleName: bundles[0].name,
+    region: application.regionName || regions[0].name,
     runtimeName: runtimes[0].name,
   };
+
+  const bundles = regions[0].bundles;
 
   const {
     register,
@@ -64,7 +66,7 @@ const CreateAppModal = (props: { application?: any; children: React.ReactNode })
 
   const { showSuccess, showError } = useGlobalStore();
 
-  const appCreateMutaion = useMutation((params: any) => ApplicationControllerCreate(params));
+  const appCreateMutation = useMutation((params: any) => ApplicationControllerCreate(params));
 
   const updateAppMutation = useMutation((params: any) => ApplicationControllerUpdate(params));
 
@@ -73,7 +75,7 @@ const CreateAppModal = (props: { application?: any; children: React.ReactNode })
     if (isEdit) {
       res = await updateAppMutation.mutateAsync(data);
     } else {
-      res = await appCreateMutaion.mutateAsync(data);
+      res = await appCreateMutation.mutateAsync(data);
     }
 
     if (!res.error) {
@@ -87,8 +89,9 @@ const CreateAppModal = (props: { application?: any; children: React.ReactNode })
 
   return (
     <>
-      {React.cloneElement(props.children as React.ReactElement, {
-        onClick: () => {
+      {React.cloneElement(props.children, {
+        onClick: (event?: any) => {
+          event?.preventDefault();
           reset(defaultValues);
           onOpen();
           setTimeout(() => {
@@ -100,23 +103,25 @@ const CreateAppModal = (props: { application?: any; children: React.ReactNode })
       <Modal isOpen={isOpen} onClose={onClose} size="xl">
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>新建应用</ModalHeader>
+          <ModalHeader>
+            {(isEdit ? t("Edit") : t("Create")) + t("HomePanel.Application")}
+          </ModalHeader>
           <ModalCloseButton />
 
           <ModalBody pb={6}>
             <VStack spacing={6} align="flex-start">
               <FormControl isRequired isInvalid={!!errors?.name}>
-                <FormLabel htmlFor="name">应用名称</FormLabel>
+                <FormLabel htmlFor="name">{t("HomePanel.Application") + t("Name")}</FormLabel>
                 <Input
                   {...register("name", {
-                    required: "name is required",
+                    required: `${t("HomePanel.Application")} ${t("IsRequired")}`,
                   })}
                 />
                 <FormErrorMessage>{errors?.name && errors?.name?.message}</FormErrorMessage>
               </FormControl>
 
               <FormControl isRequired>
-                <FormLabel htmlFor="region">Region</FormLabel>
+                <FormLabel htmlFor="region">{t("HomePanel.Region")}</FormLabel>
                 <HStack spacing={6}>
                   <Controller
                     name="region"
@@ -126,30 +131,37 @@ const CreateAppModal = (props: { application?: any; children: React.ReactNode })
                         <div>
                           {regions.map((region: any) => {
                             return (
-                              <Button
-                                variant={"solid"}
-                                colorScheme={rest.value === region.name ? "green" : "gray"}
-                                key={region.name}
-                              >
-                                {region.name}
-                              </Button>
+                              <div className="flex items-center" key={region.name}>
+                                <Button
+                                  variant={"ghost"}
+                                  size="sm"
+                                  colorScheme={rest.value === region.name ? "primary" : "gray"}
+                                  key={region.name}
+                                >
+                                  <CheckIcon className="mr-2" />
+                                  {region.displayName}
+                                </Button>
+                              </div>
                             );
                           })}
                         </div>
                       );
                     }}
                     rules={{
-                      required: { value: true, message: "Please select at least one" },
+                      required: { value: true, message: t("LimitSelect") },
                     }}
                   />
                 </HStack>
               </FormControl>
 
               <FormControl isRequired isInvalid={!!errors?.bundleName}>
-                <FormLabel htmlFor="bundleName">Bundle Name</FormLabel>
+                <FormLabel htmlFor="bundleName">
+                  {t("HomePanel.Application") + t("HomePanel.BundleName")}
+                </FormLabel>
                 <Select
+                  variant="filled"
                   {...register("bundleName", {
-                    required: "bundleName is required",
+                    required: `${t("HomePanel.BundleName")} ${t("IsRequired")}`,
                   })}
                   disabled={isEdit}
                 >
@@ -165,10 +177,11 @@ const CreateAppModal = (props: { application?: any; children: React.ReactNode })
               </FormControl>
 
               <FormControl isRequired isInvalid={!!errors?.runtimeName}>
-                <FormLabel htmlFor="runtimeName">Runtime Name</FormLabel>
+                <FormLabel htmlFor="runtimeName">{t("HomePanel.RuntimeName")}</FormLabel>
                 <Select
+                  variant="filled"
                   {...register("runtimeName", {
-                    required: "runtimeName is required",
+                    required: `${t("HomePanel.RuntimeName")} ${t("IsRequired")}`,
                   })}
                   disabled={isEdit}
                 >
@@ -187,20 +200,11 @@ const CreateAppModal = (props: { application?: any; children: React.ReactNode })
 
           <ModalFooter>
             <Button
-              mr={3}
-              onClick={() => {
-                onClose();
-              }}
-            >
-              {t("Common.Dialog.Cancel")}
-            </Button>
-            <Button
-              colorScheme="blue"
-              isLoading={appCreateMutaion.isLoading}
+              isLoading={appCreateMutation.isLoading}
               type="submit"
               onClick={handleSubmit(onSubmit)}
             >
-              {t("Common.Dialog.Confirm")}
+              {t("Confirm")}
             </Button>
           </ModalFooter>
         </ModalContent>

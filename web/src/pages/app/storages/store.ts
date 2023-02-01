@@ -15,11 +15,16 @@ export type TFile = {
     DisplayName: string;
     ID: string;
   };
+  Prefix?: string;
 };
 
 type State = {
-  currentStorage?: TBucket;
-  setCurrentStorage: (currentStorage: TBucket) => void;
+  currentStorage?: TBucket | undefined;
+  setCurrentStorage: (currentStorage: TBucket | undefined) => void;
+  prefix?: string;
+  setPrefix: (prefix: string) => void;
+  maxStorage: number;
+  setMaxStorage: (number: number) => void;
 };
 
 const useStorageStore = create<State>()(
@@ -29,6 +34,16 @@ const useStorageStore = create<State>()(
       setCurrentStorage: (currentStorage) =>
         set((state) => {
           state.currentStorage = currentStorage;
+        }),
+      prefix: "/",
+      setPrefix: (prefix) =>
+        set((state) => {
+          state.prefix = prefix;
+        }),
+      maxStorage: 0,
+      setMaxStorage: (number) =>
+        set((state) => {
+          state.maxStorage = number;
         }),
     })),
   ),

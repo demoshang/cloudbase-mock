@@ -1,116 +1,110 @@
-/* eslint-disable react/jsx-no-undef */
-import React, { useState } from "react";
 import { ArrowLeftIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon } from "@chakra-ui/icons";
-import {
-  Flex,
-  IconButton,
-  NumberDecrementStepper,
-  NumberIncrementStepper,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  Text,
-  Tooltip,
-} from "@chakra-ui/react";
+import { Button, HStack, Select, Text } from "@chakra-ui/react";
+import { t } from "i18next";
 
-export default function Pagination() {
-  const [pageCount] = useState(0);
-  const [canPreviousPage] = useState(false);
-  const [canNextPage] = useState(false);
-  const [pageIndex] = useState(0);
-  const [pageOptions] = useState([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+import IconWrap from "../IconWrap";
 
-  const previousPage = () => {};
-  const nextPage = () => {};
+export type PageValues = {
+  page?: number;
+  limit?: number;
+  total?: number;
+};
+
+export default function Pagination(props: {
+  values: PageValues;
+  options?: number[];
+  onChange: (values: PageValues) => void;
+}) {
+  const { values, onChange, options } = props;
+  const { page, total, limit } = values;
+  const maxPage = total && limit ? Math.ceil(total / limit) : -1;
 
   return (
-    <Flex justifyContent="space-between" m={4} alignItems="center">
-      <Flex>
-        <Tooltip label="First Page">
-          <IconButton
-            onClick={() => gotoPage(0)}
-            isDisabled={!canPreviousPage}
-            icon={<ArrowLeftIcon h={3} w={3} />}
-            mr={4}
-            aria-label={""}
-          />
-        </Tooltip>
-        <Tooltip label="Previous Page">
-          <IconButton
-            onClick={previousPage}
-            isDisabled={!canPreviousPage}
-            icon={<ChevronLeftIcon h={6} w={6} />}
-            aria-label={""}
-          />
-        </Tooltip>
-      </Flex>
-
-      <Flex alignItems="center">
-        <Text flexShrink="0" mr={8}>
-          <Text fontWeight="bold" as="span">
-            {pageIndex + 1}
-          </Text>
-          /
-          <Text fontWeight="bold" as="span">
-            {pageOptions.length}
-          </Text>
-        </Text>
-        <Text flexShrink="0">Go:</Text>{" "}
-        <NumberInput
-          ml={2}
-          mr={8}
-          w={28}
-          min={1}
-          max={pageOptions.length}
-          onChange={(value) => {
-            const page = value ? parseInt(value, 10) - 1 : 0;
-            gotoPage(page);
+    <HStack alignItems="center" spacing={"1"} display="flex" whiteSpace={"nowrap"}>
+      <Text as="div">
+        {t("Total")}: {total}
+      </Text>
+      <IconWrap showBg tooltip="First Page" size={18}>
+        <Button
+          variant="link"
+          onClick={() => {
+            onChange({
+              ...values,
+              page: 1,
+            });
           }}
-          defaultValue={pageIndex + 1}
+          isDisabled={page === 1 || maxPage === -1}
         >
-          <NumberInputField />
-          <NumberInputStepper>
-            <NumberIncrementStepper />
-            <NumberDecrementStepper />
-          </NumberInputStepper>
-        </NumberInput>
-        {/* <Select
-          w={32}
-          value={pageSize}
-          onChange={(e) => {
-            setPageSize(Number(e.target.value));
+          <ArrowLeftIcon fontSize={"8px"} />
+        </Button>
+      </IconWrap>
+      <IconWrap showBg tooltip="Previous Page" size={18}>
+        <Button
+          variant="link"
+          onClick={() =>
+            onChange({
+              ...values,
+              page: page! - 1,
+            })
+          }
+          isDisabled={page === 1 || maxPage === -1}
+        >
+          <ChevronLeftIcon fontSize={"16px"} />
+        </Button>
+      </IconWrap>
+      <Text fontWeight="bold" as="p" minWidth={"36px"} px="8px" textAlign={"center"}>
+        {page}
+      </Text>
+      <Text>/</Text>
+      <Text fontWeight="bold" as="p" minWidth={"36px"} px="8px" textAlign={"center"}>
+        {maxPage < 0 ? "-" : maxPage}
+      </Text>
+      <IconWrap showBg tooltip="Next Page" size={18}>
+        <Button
+          variant="link"
+          isDisabled={maxPage === page || maxPage === -1}
+          onClick={() => {
+            onChange({
+              ...values,
+              page: page! + 1,
+            });
           }}
         >
-          {[10, 20, 30, 40, 50].map((pageSize) => (
-            <option key={pageSize} value={pageSize}>
-              Show {pageSize}
-            </option>
-          ))}
-        </Select> */}
-      </Flex>
-
-      <Flex>
-        <Tooltip label="Next Page">
-          <IconButton
-            onClick={nextPage}
-            isDisabled={!canNextPage}
-            icon={<ChevronRightIcon h={6} w={6} />}
-            aria-label={""}
-          />
-        </Tooltip>
-        <Tooltip label="Last Page">
-          <IconButton
-            onClick={() => gotoPage(pageCount - 1)}
-            isDisabled={!canNextPage}
-            icon={<ArrowRightIcon h={3} w={3} />}
-            ml={4}
-            aria-label={""}
-          />
-        </Tooltip>
-      </Flex>
-    </Flex>
+          <ChevronRightIcon fontSize={"16px"} />
+        </Button>
+      </IconWrap>
+      <IconWrap showBg tooltip="Last Page" size={18}>
+        <Button
+          variant="link"
+          onClick={() => {
+            onChange({
+              ...values,
+              page: maxPage,
+            });
+          }}
+          isDisabled={maxPage === page || maxPage === -1}
+        >
+          <ArrowRightIcon fontSize={"8px"} />
+        </Button>
+      </IconWrap>
+      <Select
+        size="sm"
+        style={{ borderWidth: 0 }}
+        value={limit}
+        onChange={(e: any) => {
+          onChange({
+            ...values,
+            limit: parseInt(e.target.value),
+            page: 1,
+          });
+        }}
+      >
+        {(options || [10, 20, 30]).map((data: any) => (
+          <option key={data} value={data}>
+            {data} / {t("Page")}
+          </option>
+        ))}
+      </Select>
+    </HStack>
   );
-}
-function gotoPage(page: number) {
-  throw new Error("Function not implemented.");
 }

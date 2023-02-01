@@ -8,11 +8,12 @@ import useGlobalStore from "@/pages/globalStore";
 type State = {
   allFunctionList: TFunction[];
   currentFunction: TFunction | { [key: string]: any };
+  currentRequestId: string | undefined;
   functionCodes: { [key: string]: string };
   getFunctionUrl: () => string;
-  getFunctionDebugUrl: () => string;
 
-  setAllFunctionList: (funcionList: TFunction[]) => void;
+  setCurrentRequestId: (requestId: string | undefined) => void;
+  setAllFunctionList: (functionList: TFunction[]) => void;
   setCurrentFunction: (currentFunction: TFunction | { [key: string]: any }) => void;
   updateFunctionCode: (current: TFunction | { [key: string]: any }, codes: string) => void;
 };
@@ -21,27 +22,23 @@ const useFunctionStore = create<State>()(
   devtools(
     immer((set, get) => ({
       allFunctionList: [],
-
       currentFunction: {},
-
       functionCodes: {},
+      currentRequestId: undefined,
 
       getFunctionUrl: () => {
         const currentApp = useGlobalStore.getState().currentApp;
         const currentFunction = get().currentFunction;
 
         return currentFunction?.name
-          ? `http://${currentApp?.gateway.status.appRoute.domain}/${currentFunction?.name}`
+          ? `http://${currentApp?.domain?.domain}/${currentFunction?.name}`
           : "";
       },
 
-      getFunctionDebugUrl: () => {
-        const currentApp = useGlobalStore.getState().currentApp;
-        const currentFunction = get().currentFunction;
-
-        return currentFunction?.name
-          ? `http://${currentApp?.gateway.status.appRoute.domain}/debug/${currentFunction?.name}`
-          : "";
+      setCurrentRequestId: (requestId) => {
+        set((state) => {
+          state.currentRequestId = requestId;
+        });
       },
 
       setAllFunctionList: (allFunctionList) => {

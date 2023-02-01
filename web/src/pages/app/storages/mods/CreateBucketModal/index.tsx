@@ -1,14 +1,11 @@
 import React from "react";
 import { useForm } from "react-hook-form";
-import { useTranslation } from "react-i18next";
-import { AddIcon, EditIcon } from "@chakra-ui/icons";
 import {
   Button,
   FormControl,
+  FormErrorMessage,
   FormLabel,
   Input,
-  InputGroup,
-  InputRightElement,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -20,33 +17,36 @@ import {
   useDisclosure,
   VStack,
 } from "@chakra-ui/react";
-
-import IconWrap from "@/components/IconWrap";
+import { t } from "i18next";
 
 import { useBucketCreateMutation, useBucketUpdateMutation } from "../../service";
+import useStorageStore from "../../store";
 
 import { TBucket } from "@/apis/typing";
 import useGlobalStore from "@/pages/globalStore";
 
-function CreateBucketModal(props: { storage?: TBucket }) {
+function CreateBucketModal(props: { storage?: TBucket; children: React.ReactElement }) {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { t } = useTranslation();
+  const store = useStorageStore((store) => store);
 
-  const { storage } = props;
-
+  const { storage, children } = props;
   const bucketCreateMutation = useBucketCreateMutation();
   const bucketUpdateMutation = useBucketUpdateMutation();
 
   const defaultValues = {
-    shortName: storage?.metadata.name,
-    policy: storage?.spec.policy,
-    storage: parseInt(storage?.spec.storage || "", 10),
+    name: storage?.name,
+    policy: storage?.policy,
   };
 
-  const { register, handleSubmit, reset, setFocus } = useForm<{
-    shortName: string;
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setFocus,
+    formState: { errors },
+  } = useForm<{
+    name: string;
     policy: string;
-    storage: number;
   }>({
     defaultValues,
   });
@@ -56,22 +56,23 @@ function CreateBucketModal(props: { storage?: TBucket }) {
   const isEdit = !!storage;
 
   const onSubmit = async (values: any) => {
+    // debugger;
     let res: any = {};
-    values.storage = values.storage + "Gi";
     if (isEdit) {
-      res = await bucketUpdateMutation.mutateAsync({
-        name: values.shortName,
-        ...values,
-      });
+      res = await bucketUpdateMutation.mutateAsync(values);
 
       if (!res.error) {
+        store.setCurrentStorage(res.data);
         showSuccess("update success.");
         onClose();
       }
     } else {
-      res = await bucketCreateMutation.mutateAsync(values);
-
+      res = await bucketCreateMutation.mutateAsync({
+        shortName: values.name,
+        policy: values.policy,
+      });
       if (!res.error) {
+        store.setCurrentStorage(res.data);
         showSuccess("create success.");
         onClose();
       }
@@ -80,67 +81,56 @@ function CreateBucketModal(props: { storage?: TBucket }) {
 
   return (
     <>
-      <IconWrap
-        size={20}
-        onClick={() => {
+      {React.cloneElement(children, {
+        onClick: () => {
           onOpen();
           reset(defaultValues);
           setTimeout(() => {
-            setFocus("shortName");
+            setFocus("name");
           }, 0);
-        }}
-        tooltip="创建 Bucket"
-      >
-        {isEdit ? <EditIcon fontSize={13} /> : <AddIcon fontSize={10} />}
-      </IconWrap>
-
+        },
+      })}
       <Modal isOpen={isOpen} onClose={onClose} size="lg">
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Create Bucket</ModalHeader>
+          <ModalHeader>
+            {isEdit ? t("StoragePanel.EditBucket") : t("StoragePanel.CreateBucket")}
+          </ModalHeader>
           <ModalCloseButton />
 
           <ModalBody pb={6}>
             <VStack spacing={6} align="flex-start">
-              <FormControl>
-                <FormLabel htmlFor="shortName">Bucket名称</FormLabel>
+              <FormControl isInvalid={!!errors?.name}>
+                <FormLabel htmlFor="name"> {t("StoragePanel.BucketName")}</FormLabel>
                 <Input
-                  {...register("shortName", { required: true })}
+                  {...register("name", {
+                    required: true,
+                    pattern: {
+                      value: /^[a-z][a-z0-9-]+[a-z]$/,
+                      message: t("StoragePanel.BucketNameRule"),
+                    },
+                  })}
+                  placeholder={String(t("StoragePanel.BucketNamePlaceholder"))}
                   variant="filled"
                   disabled={isEdit}
                 />
+                <FormErrorMessage>{errors.name && errors.name.message}</FormErrorMessage>
               </FormControl>
 
               <FormControl>
-                <FormLabel htmlFor="policy">权限</FormLabel>
+                <FormLabel htmlFor="policy">{t("StoragePanel.Policy")}</FormLabel>
                 <Select {...register("policy", { required: true })} variant="filled">
-                  <option value="private">私有</option>
-                  <option value="readonly">公共读</option>
-                  <option value="readwrite">公共读写</option>
+                  <option value="private">{t("StoragePanel.Private")}</option>
+                  <option value="readonly">{t("StoragePanel.Readonly")}</option>
+                  <option value="readwrite">{t("StoragePanel.ReadWrite")}</option>
                 </Select>
-              </FormControl>
-
-              <FormControl>
-                <FormLabel htmlFor="storage">容量</FormLabel>
-                <InputGroup>
-                  <Input
-                    {...register("storage", { required: true })}
-                    type="number"
-                    variant="filled"
-                    className="w-1"
-                  />
-                  <InputRightElement children="GB" />
-                </InputGroup>
               </FormControl>
             </VStack>
           </ModalBody>
 
           <ModalFooter>
-            <Button mr={3} onClick={onClose}>
-              {t("Common.Dialog.Cancel")}
-            </Button>
-            <Button colorScheme="primary" type="submit" onClick={handleSubmit(onSubmit)}>
-              {t("Common.Dialog.Confirm")}
+            <Button type="submit" onClick={handleSubmit(onSubmit)}>
+              {t("Confirm")}
             </Button>
           </ModalFooter>
         </ModalContent>

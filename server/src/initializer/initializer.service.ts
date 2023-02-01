@@ -1,11 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common'
+import { RegionService } from 'src/region/region.service'
+import { MinioService } from 'src/storage/minio/minio.service'
 import { CPU_UNIT, ServerConfig } from '../constants'
 import { PrismaService } from '../prisma.service'
+import * as assert from 'assert'
 
 @Injectable()
 export class InitializerService {
   private readonly logger = new Logger(InitializerService.name)
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly minioService: MinioService,
+    private readonly regionService: RegionService,
+  ) {}
 
   async createDefaultRegion() {
     // check if exists
@@ -17,7 +24,38 @@ export class InitializerService {
 
     // create default region
     const res = await this.prisma.region.create({
-      data: { name: 'default' },
+      data: {
+        name: 'default',
+        displayName: 'Default',
+        clusterConf: {
+          driver: 'kubernetes',
+        },
+        databaseConf: {
+          set: {
+            driver: 'mongodb',
+            connectionUri: ServerConfig.DATABASE_URL,
+          },
+        },
+        storageConf: {
+          set: {
+            driver: 'minio',
+            domain: ServerConfig.MINIO_DOMAIN,
+            externalEndpoint: ServerConfig.MINIO_EXTERNAL_ENDPOINT,
+            internalEndpoint: ServerConfig.MINIO_INTERNAL_ENDPOINT,
+            accessKey: ServerConfig.MINIO_ROOT_ACCESS_KEY,
+            secretKey: ServerConfig.MINIO_ROOT_SECRET_KEY,
+          },
+        },
+        gatewayConf: {
+          set: {
+            driver: 'apisix',
+            domain: ServerConfig.DOMAIN,
+            tls: false,
+            apiUrl: ServerConfig.APISIX_API_URL,
+            apiKey: ServerConfig.APISIX_API_KEY,
+          },
+        },
+      },
     })
     this.logger.verbose(`Created default region: ${res.name}`)
     return res
@@ -44,6 +82,11 @@ export class InitializerService {
         storageCapacity: 1024 * 5,
         networkTrafficOutbound: 1024 * 5,
         priority: 0,
+        region: {
+          connect: {
+            name: 'default',
+          },
+        },
       },
     })
     this.logger.verbose('Created default bundle: ' + res.name)
@@ -73,5 +116,19 @@ export class InitializerService {
     })
     this.logger.verbose('Created default runtime: ' + res.name)
     return res
+  }
+
+  async initMinioAlias() {
+    const regions = await this.regionService.findAll()
+
+    for (const region of regions) {
+      this.logger.verbose('MinioService init - ' + region.name)
+
+      const res = await this.minioService.setMinioClientTarget(region)
+      assert.ok(
+        res.status === 'success',
+        'set minio client target failed: ' + region.name,
+      )
+    }
   }
 }

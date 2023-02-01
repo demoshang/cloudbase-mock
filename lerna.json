@@ -1,0 +1,21 @@
+{
+  "packages": [
+    "./packages/*",
+    "./docs",
+    "./server",
+    "./web",
+    "./runtimes/nodejs"
+  ],
+  "version": "1.0.0-beta.0",
+  "command": {
+    "publish": {
+      "ignoreChanges": [
+        "package-lock.json",
+        "*.md",
+        "tests",
+        "http",
+        "ecosystem.config*"
+      ]
+    }
+  }
+}
