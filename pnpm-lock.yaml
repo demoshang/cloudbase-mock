@@ -46,14 +46,12 @@ importers:
       database-ql: 'workspace:'
       fs-extra: ^11.1.0
       json5: ^2.2.3
-      mongo-url-parser: ^1.0.2
     dependencies:
       '@cloudbase/node-sdk': 2.9.1_typescript@4.9.4
       database-proxy: link:../database-proxy
       database-ql: link:../database-ql
       fs-extra: 11.1.0
       json5: 2.2.3
-      mongo-url-parser: 1.0.2
     devDependencies:
       '@types/fs-extra': 11.0.1
 
@@ -2367,10 +2365,6 @@ packages:
       yargs-parser: 20.2.4
       yargs-unparser: 2.0.0
     dev: true
-
-  /mongo-url-parser/1.0.2:
-    resolution: {integrity: sha512-mv0RXncyzNt+gtnKOjD3YJK4I6+r9jk3aU5psa8/E8zvpN03AsQ0DkLJPBs5vPAzCfMs4T8gA2UQgaFx3QANHw==}
-    dev: false
 
   /mongodb-connection-string-url/2.6.0:
     resolution: {integrity: sha512-WvTZlI9ab0QYtTYnuMLgobULWhokRjtC7db9LtcVfJ+Hsnyr5eo6ZtNAt3Ly24XZScGMelOcGtm7lSn0332tPQ==}

@@ -20,8 +20,7 @@
     "database-proxy": "workspace:",
     "database-ql": "workspace:",
     "fs-extra": "^11.1.0",
-    "json5": "^2.2.3",
-    "mongo-url-parser": "^1.0.2"
+    "json5": "^2.2.3"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.1"

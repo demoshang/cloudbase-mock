@@ -4,9 +4,7 @@ import { getDBConfig } from "./config";
 async function init() {
   const { url, name } = await getDBConfig();
 
-  const accessor = new MongoAccessor(name, url, {
-    directConnection: true,
-  });
+  const accessor = new MongoAccessor(name, url);
 
   await accessor.init();
 

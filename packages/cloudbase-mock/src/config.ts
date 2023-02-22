@@ -1,8 +1,8 @@
 import { pathExists, readFile } from "fs-extra";
 import * as json5 from "json5";
-import * as parser from "mongo-url-parser";
 import { homedir } from "os";
 import { resolve } from "path";
+import { parse } from "url";
 
 const CONFIG_NAME = "config";
 const CONFIG_EXT = ".json5";
@@ -123,9 +123,9 @@ async function getDBUrl() {
 
 async function getDBConfig() {
   const url = await getDBUrl();
-  const parsed = parser(url);
+  const { pathname } = parse(url, true);
 
-  const { dbName } = parsed;
+  const dbName = pathname.split("/").pop();
 
   console.info(`连接本地数据库: ${dbName}`);
   console.info(url);
