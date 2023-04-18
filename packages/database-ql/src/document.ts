@@ -82,6 +82,7 @@ export class DocumentReference {
 
       id: res.data._id || res.data[this._db.primaryKey],
       insertedCount: res.data.insertedCount,
+      inserted: res.data.insertedCount,
       requestId: res.requestId,
       ok: true
     } as unknown as AddRes

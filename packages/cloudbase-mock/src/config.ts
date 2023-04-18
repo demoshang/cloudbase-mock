@@ -8,7 +8,7 @@ const CONFIG_NAME = "config";
 const CONFIG_EXT = ".json5";
 const CONFIG_HOME_DIR = resolve(homedir(), ".config/.tcb-mock");
 
-const DEFAULT_DB_URL_ENV_KEY = "DB_URL";
+const DEFAULT_DB_URL_ENV_KEY = "TCB_MOCK_DB_URL";
 
 interface Config {
   // db url keys
